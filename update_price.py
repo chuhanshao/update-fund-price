@@ -15,7 +15,6 @@ def extract_fund_info() -> List[FundInfo]:
     fund_info_list = []
     with open('./fund_code.csv', 'r') as f:
         content = csv.reader(f)
-        content.__next__()
         for row in content:
             query_code, query_type, update_code = row
             fund_info_list.append(FundInfo(query_code, query_type, update_code))
@@ -27,9 +26,11 @@ def get_query_date(fund_type: str) -> str:
         query_date = time.strftime('%Y-%m-%d', time.localtime(time.time()))
     else:
         weekday = datetime.date.today().weekday()
-        if weekday == '5':
+        if weekday == 5:
             day_shift = 2
-        elif weekday == '6':
+        elif weekday == 6:
+            day_shift = 3
+        elif weekday == 0:
             day_shift = 3
         else:
             day_shift = 1
@@ -41,14 +42,15 @@ def get_latest_price(fund_code: str, start_time: str, end_time: str) -> str:
     url = f'https://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code={fund_code}&page=1&per=20&sdate={start_time}&edate={end_time}'
     resp = requests.get(url, timeout=30)
     extracted_price = re.findall(r'(\d+\.\d+)</td>', resp.text)
-    print(extracted_price)
-    return extracted_price[0]
+    return extracted_price[0] if extracted_price else '-1'
 
 
 def generate_update_info(fund_info: FundInfo) -> PriceInfo:
     query_code, query_type, update_code = fund_info
     query_date = get_query_date(query_type)
     latest_price = get_latest_price(query_code, query_date, query_date)
+    if latest_price == '-1':
+        return PriceInfo(update_code, '-1')
     return PriceInfo(update_code, latest_price)
 
 
@@ -63,4 +65,6 @@ if __name__ == '__main__':
     for fund in fund_list:
         price_info.append(generate_update_info(fund))
     for price in price_info:
+        if price.price == '-1':
+            continue
         generate_moneywiz_url(price)
