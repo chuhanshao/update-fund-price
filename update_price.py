@@ -6,6 +6,7 @@ import datetime
 import webbrowser
 from collections import namedtuple
 from typing import *
+import sys
 
 FundInfo = namedtuple('FundInfo', 'query_code, query_type, update_code')
 PriceInfo = namedtuple('PriceInfo', 'update_code, price')
@@ -16,9 +17,18 @@ def extract_fund_info() -> List[FundInfo]:
     with open('./fund_code.csv', 'r') as f:
         content = csv.reader(f)
         for row in content:
-            query_code, query_type, update_code = row
-            fund_info_list.append(FundInfo(query_code, query_type, update_code))
+            if len(row) == 3:
+                query_code, query_type, update_code = row
+                fund_info_list.append(FundInfo(query_code, query_type, update_code))
+            else:
+                continue
     return fund_info_list
+
+
+def add_fund(input_str: str) -> None:
+    with open('./fund_code.csv', 'a+') as f:
+        writer = csv.writer(f)
+        writer.writerow(input_str.split(','))
 
 
 def get_query_date(fund_type: str) -> str:
@@ -59,7 +69,7 @@ def generate_moneywiz_url(price_info: PriceInfo) -> None:
     webbrowser.open(url, new=0, autoraise=True)
 
 
-if __name__ == '__main__':
+def main() -> None:
     fund_list = extract_fund_info()
     price_info = []
     for fund in fund_list:
@@ -68,3 +78,10 @@ if __name__ == '__main__':
         if price.price == '-1':
             continue
         generate_moneywiz_url(price)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == 'add':
+        add_fund(sys.argv[2])
+    else:
+        main()
